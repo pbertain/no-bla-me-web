@@ -1,0 +1,42 @@
+[Unit]
+Description=No-Bla-Me Web Application - Production
+Documentation=https://github.com/pbertain/no-bla-me-web
+After=network.target nginx.service
+Wants=network.target
+Requires=nginx.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/prod/no-bla-me
+ExecStart=/usr/bin/python3 -m http.server 8080 --bind 127.0.0.1
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=no-bla-me-prod
+
+# Environment variables
+Environment=NODE_ENV=production
+Environment=PORT=8080
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/prod/no-bla-me
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+# Process limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Monitoring
+WatchdogSec=30
+
+[Install]
+WantedBy=multi-user.target

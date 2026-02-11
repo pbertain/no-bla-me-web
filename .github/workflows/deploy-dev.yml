@@ -53,16 +53,35 @@ jobs:
             ./no-bla-me-web/ \
             $DEV_SERVER_USER@$DEV_SERVER_HOST:$DEV_DEPLOY_PATH
             
-      - name: Restart development service
+      - name: Deploy systemd service file
         env:
           DEV_SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
           DEV_SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
           DEV_SERVICE_NAME: ${{ secrets.DEV_SERVICE_NAME }}
         run: |
           if [ -n "$DEV_SERVICE_NAME" ]; then
-            ssh -i ~/.ssh/deploy_key $DEV_SERVER_USER@$DEV_SERVER_HOST "sudo systemctl restart $DEV_SERVICE_NAME && sudo systemctl enable $DEV_SERVICE_NAME" || echo "Service restart failed or not configured"
+            # Copy systemd service file
+            scp -i ~/.ssh/deploy_key "./systemd/${DEV_SERVICE_NAME}.service" \
+              $DEV_SERVER_USER@$DEV_SERVER_HOST:/tmp/${DEV_SERVICE_NAME}.service
+            # Move to systemd directory and reload
+            ssh -i ~/.ssh/deploy_key $DEV_SERVER_USER@$DEV_SERVER_HOST \
+              "sudo mv /tmp/${DEV_SERVICE_NAME}.service /etc/systemd/system/ && \
+               sudo systemctl daemon-reload"
+          fi
+            
+      - name: Enable and start development service
+        env:
+          DEV_SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
+          DEV_SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
+          DEV_SERVICE_NAME: ${{ secrets.DEV_SERVICE_NAME }}
+        run: |
+          if [ -n "$DEV_SERVICE_NAME" ]; then
+            ssh -i ~/.ssh/deploy_key $DEV_SERVER_USER@$DEV_SERVER_HOST \
+              "sudo systemctl enable $DEV_SERVICE_NAME && \
+               sudo systemctl start $DEV_SERVICE_NAME && \
+               sudo systemctl restart $DEV_SERVICE_NAME" || echo "Service management failed or not configured"
           else
-            echo "DEV_SERVICE_NAME not configured, skipping service restart"
+            echo "DEV_SERVICE_NAME not configured, skipping service management"
           fi
             
       - name: Verify deployment
