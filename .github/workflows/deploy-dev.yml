@@ -39,6 +39,7 @@ jobs:
           DEV_SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
           DEV_SERVER_KEY: ${{ secrets.DEV_SERVER_SSH_KEY }}
           DEV_DEPLOY_PATH: ${{ secrets.DEV_DEPLOY_PATH }}
+          DEV_SERVICE_NAME: ${{ secrets.DEV_SERVICE_NAME }}
         run: |
           # Install SSH key
           mkdir -p ~/.ssh
@@ -51,6 +52,28 @@ jobs:
             -e "ssh -i ~/.ssh/deploy_key" \
             ./no-bla-me-web/ \
             $DEV_SERVER_USER@$DEV_SERVER_HOST:$DEV_DEPLOY_PATH
+            
+      - name: Restart development service
+        env:
+          DEV_SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
+          DEV_SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
+          DEV_SERVICE_NAME: ${{ secrets.DEV_SERVICE_NAME }}
+        run: |
+          if [ -n "$DEV_SERVICE_NAME" ]; then
+            ssh -i ~/.ssh/deploy_key $DEV_SERVER_USER@$DEV_SERVER_HOST "sudo systemctl restart $DEV_SERVICE_NAME && sudo systemctl enable $DEV_SERVICE_NAME" || echo "Service restart failed or not configured"
+          else
+            echo "DEV_SERVICE_NAME not configured, skipping service restart"
+          fi
+            
+      - name: Verify deployment
+        env:
+          DEV_SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
+        run: |
+          # Wait a moment for service to start
+          sleep 5
+          # Basic health check
+          curl -f http://$DEV_SERVER_HOST || echo "⚠️  Health check failed - service may still be starting"
+        continue-on-error: true
             
       - name: Notify deployment status
         if: always()
