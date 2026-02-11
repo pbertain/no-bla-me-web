@@ -10,7 +10,7 @@ Type=simple
 User=www-data
 Group=www-data
 WorkingDirectory=/opt/prod/no-bla-me
-ExecStart=/usr/bin/python3 -m http.server 8080 --bind 127.0.0.1
+ExecStart=/usr/bin/python3 -m http.server 19080 --bind 127.0.0.1
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=5
@@ -20,7 +20,7 @@ SyslogIdentifier=no-bla-me-prod
 
 # Environment variables
 Environment=NODE_ENV=production
-Environment=PORT=8080
+Environment=PORT=19080
 
 # Security settings
 NoNewPrivileges=true

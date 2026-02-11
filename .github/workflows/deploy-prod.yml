@@ -126,7 +126,7 @@ jobs:
                 
               - name: Verify deployment
                 uri:
-                  url: "http://{{ inventory_hostname }}"
+                  url: "http://{{ inventory_hostname }}:19080"
                   method: GET
                   status_code: [200, 301, 302]
                 ignore_errors: yes

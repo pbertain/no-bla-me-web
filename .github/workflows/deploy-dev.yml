@@ -91,7 +91,7 @@ jobs:
           # Wait a moment for service to start
           sleep 5
           # Basic health check
-          curl -f http://$DEV_SERVER_HOST || echo "⚠️  Health check failed - service may still be starting"
+          curl -f http://$DEV_SERVER_HOST:19080 || echo "⚠️  Health check failed - service may still be starting"
         continue-on-error: true
             
       - name: Notify deployment status
