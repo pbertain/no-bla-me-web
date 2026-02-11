@@ -96,7 +96,6 @@ jobs:
                   dest: "/etc/systemd/system/{{ service_name }}.service"
                   mode: '0644'
                 when: service_name is defined
-                notify: reload systemd
                 
               - name: Set proper ownership
                 file:
