@@ -1,0 +1,142 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deployment even if no changes detected'
+        required: false
+        default: 'false'
+
+jobs:
+  deploy-prod:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Python for Ansible
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install Ansible
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible
+          
+      - name: Setup SSH key for Ansible
+        env:
+          ANSIBLE_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$ANSIBLE_SSH_KEY" > ~/.ssh/ansible_key
+          chmod 600 ~/.ssh/ansible_key
+          
+      - name: Create Ansible inventory
+        env:
+          PROD_SERVER_HOST: ${{ secrets.PROD_SERVER_HOST }}
+          PROD_SERVER_USER: ${{ secrets.PROD_SERVER_USER }}
+        run: |
+          mkdir -p ansible
+          cat > ansible/inventory.ini << EOF
+          [production]
+          $PROD_SERVER_HOST ansible_user=$PROD_SERVER_USER ansible_ssh_private_key_file=~/.ssh/ansible_key ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+          EOF
+          
+      - name: Create Ansible playbook
+        env:
+          PROD_DEPLOY_PATH: ${{ secrets.PROD_DEPLOY_PATH }}
+          PROD_SERVICE_NAME: ${{ secrets.PROD_SERVICE_NAME }}
+        run: |
+          cat > ansible/deploy.yml << EOF
+          ---
+          - name: Deploy No-Bla-Me Web Application
+            hosts: production
+            become: yes
+            vars:
+              app_path: $PROD_DEPLOY_PATH
+              service_name: $PROD_SERVICE_NAME
+              backup_dir: /var/backups/no-bla-me-web
+              
+            tasks:
+              - name: Create backup directory
+                file:
+                  path: "{{ backup_dir }}"
+                  state: directory
+                  mode: '0755'
+                  
+              - name: Backup current application
+                archive:
+                  path: "{{ app_path }}"
+                  dest: "{{ backup_dir }}/backup-{{ ansible_date_time.epoch }}.tar.gz"
+                when: app_path is defined
+                ignore_errors: yes
+                
+              - name: Ensure application directory exists
+                file:
+                  path: "{{ app_path }}"
+                  state: directory
+                  mode: '0755'
+                  
+              - name: Copy application files
+                copy:
+                  src: "{{ playbook_dir }}/../no-bla-me-web/"
+                  dest: "{{ app_path }}"
+                  mode: '0644'
+                  directory_mode: '0755'
+                  
+              - name: Set proper ownership
+                file:
+                  path: "{{ app_path }}"
+                  owner: www-data
+                  group: www-data
+                  recurse: yes
+                when: ansible_os_family == "Debian"
+                
+              - name: Restart web service if defined
+                systemd:
+                  name: "{{ service_name }}"
+                  state: restarted
+                  enabled: yes
+                when: service_name is defined
+                ignore_errors: yes
+                
+              - name: Verify deployment
+                uri:
+                  url: "http://{{ inventory_hostname }}"
+                  method: GET
+                  status_code: [200, 301, 302]
+                ignore_errors: yes
+                register: health_check
+                
+              - name: Display deployment status
+                debug:
+                  msg: |
+                    Deployment Status: {{ 'SUCCESS' if health_check.status in [200, 301, 302] else 'WARNING - Health check failed' }}
+                    Response Code: {{ health_check.status | default('N/A') }}
+          EOF
+          
+      - name: Run Ansible deployment
+        run: |
+          cd ansible
+          ansible-playbook -i inventory.ini deploy.yml -v
+          
+      - name: Clean up sensitive files
+        if: always()
+        run: |
+          rm -f ~/.ssh/ansible_key
+          rm -rf ansible/
+          
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "🚀 Production deployment completed successfully"
+          else
+            echo "💥 Production deployment failed - check logs for details"
+          fi

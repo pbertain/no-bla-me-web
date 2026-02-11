@@ -1,0 +1,62 @@
+name: Deploy to Development
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - dev
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js (if needed for build process)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies (if package.json exists)
+        run: |
+          if [ -f package.json ]; then
+            npm ci
+          fi
+        
+      - name: Build project (if build script exists)
+        run: |
+          if [ -f package.json ] && npm run | grep -q "build"; then
+            npm run build
+          fi
+          
+      - name: Deploy to Development Environment
+        env:
+          DEV_SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
+          DEV_SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
+          DEV_SERVER_KEY: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          DEV_DEPLOY_PATH: ${{ secrets.DEV_DEPLOY_PATH }}
+        run: |
+          # Install SSH key
+          mkdir -p ~/.ssh
+          echo "$DEV_SERVER_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H $DEV_SERVER_HOST >> ~/.ssh/known_hosts
+          
+          # Deploy files via rsync
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            ./no-bla-me-web/ \
+            $DEV_SERVER_USER@$DEV_SERVER_HOST:$DEV_DEPLOY_PATH
+            
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ Development deployment successful"
+          else
+            echo "❌ Development deployment failed"
+          fi
