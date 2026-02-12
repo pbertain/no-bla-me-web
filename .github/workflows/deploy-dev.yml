@@ -43,13 +43,17 @@ jobs:
         run: |
           # Install SSH key
           mkdir -p ~/.ssh
-          echo "$DEV_SERVER_KEY" > ~/.ssh/deploy_key
+          echo "$DEV_SERVER_KEY" | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+          chmod 700 ~/.ssh
           ssh-keyscan -H $DEV_SERVER_HOST >> ~/.ssh/known_hosts
+          
+          # Test SSH connection
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $DEV_SERVER_USER@$DEV_SERVER_HOST "echo 'SSH connection test successful'"
           
           # Deploy files via rsync
           rsync -avz --delete \
-            -e "ssh -i ~/.ssh/deploy_key" \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
             ./no-bla-me-web/ \
             $DEV_SERVER_USER@$DEV_SERVER_HOST:$DEV_DEPLOY_PATH
             
@@ -61,10 +65,10 @@ jobs:
         run: |
           if [ -n "$DEV_SERVICE_NAME" ]; then
             # Copy systemd service file
-            scp -i ~/.ssh/deploy_key "./systemd/${DEV_SERVICE_NAME}.service" \
+            scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "./systemd/${DEV_SERVICE_NAME}.service" \
               $DEV_SERVER_USER@$DEV_SERVER_HOST:/tmp/${DEV_SERVICE_NAME}.service
             # Move to systemd directory and reload
-            ssh -i ~/.ssh/deploy_key $DEV_SERVER_USER@$DEV_SERVER_HOST \
+            ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $DEV_SERVER_USER@$DEV_SERVER_HOST \
               "sudo mv /tmp/${DEV_SERVICE_NAME}.service /etc/systemd/system/ && \
                sudo systemctl daemon-reload"
           fi
@@ -76,7 +80,7 @@ jobs:
           DEV_SERVICE_NAME: ${{ secrets.DEV_SERVICE_NAME }}
         run: |
           if [ -n "$DEV_SERVICE_NAME" ]; then
-            ssh -i ~/.ssh/deploy_key $DEV_SERVER_USER@$DEV_SERVER_HOST \
+            ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $DEV_SERVER_USER@$DEV_SERVER_HOST \
               "sudo systemctl enable $DEV_SERVICE_NAME && \
                sudo systemctl start $DEV_SERVICE_NAME && \
                sudo systemctl restart $DEV_SERVICE_NAME" || echo "Service management failed or not configured"
