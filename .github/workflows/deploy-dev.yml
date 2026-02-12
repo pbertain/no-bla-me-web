@@ -37,7 +37,7 @@ jobs:
         env:
           DEV_SERVER_HOST: ${{ secrets.DEV_SERVER_HOST }}
           DEV_SERVER_USER: ${{ secrets.DEV_SERVER_USER }}
-          DEV_SERVER_KEY: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          DEV_SERVER_KEY: ${{ secrets.DEV_SSH_KEY }}
           DEV_DEPLOY_PATH: ${{ secrets.DEV_DEPLOY_PATH }}
           DEV_SERVICE_NAME: ${{ secrets.DEV_SERVICE_NAME }}
         run: |
