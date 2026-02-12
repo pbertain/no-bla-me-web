@@ -6,7 +6,7 @@
 }
 
 body {
-    background: linear-gradient(135deg, #4A0F12 0%, #6B2A37 50%, #4F2610 100%) !important;
+    background: linear-gradient(135deg, #8B1538 0%, #A22025 35%, #F26077 65%, #A64B1C 100%) !important;
     color: #ffffff;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     line-height: 1.6;
@@ -274,10 +274,11 @@ a:hover {
 
 .emoji {
     position: absolute;
-    font-size: 2rem;
-    opacity: 0.6;
+    font-size: 3rem;
+    opacity: 0.8;
     animation: floatAround 15s infinite linear;
     user-select: none;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
 }
 
 .emoji-1 {
