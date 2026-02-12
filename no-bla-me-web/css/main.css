@@ -5,12 +5,19 @@
     box-sizing: border-box;
 }
 
-body {
+html, body {
     background: linear-gradient(135deg, #8B1538 0%, #A22025 35%, #F26077 65%, #A64B1C 100%) !important;
+    background-attachment: fixed !important;
     color: #ffffff;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     line-height: 1.6;
     min-height: 100vh;
+    width: 100vw;
+    margin: 0;
+    padding: 0;
+}
+
+body {
     display: flex;
     align-items: center;
     justify-content: center;
